@@ -26,26 +26,35 @@ eligible_seasons <- season_stats %>%
   filter(playerID %in% eligible_players &
            AB + BB + HBP + SH + SF > 0)
 
-# Engineer Features
-engineerFeatures <- function(seasons, counting_stats, master = Master, normalize = TRUE){
+# Engineer statistics and prepare data frame
+engineerStats <- function(seasons, counting_stats, normalize = TRUE){
   stats <- seasons %>%
     mutate(PA = AB + BB + HBP + SH + SF,
            X1B = H - X2B - X3B - HR,
            UIBB = BB - IBB) %>%
-    inner_join(master, by = "playerID") %>%
-    mutate(age = calculateSeasonAge(birthMonth, yearID, birthYear)) %>%
-    select(playerID, yearID, PA, counting_stats) %>%
-    arrange(playerID, yearID) %>%
+    inner_join(Master, by = "playerID") %>%
+    mutate(age = calculateSeasonAge(birthDay, birthMonth, birthYear, yearID)) %>%
     group_by(playerID) %>%
-    mutate(season_number = row_number())
+    mutate(season_number = min_rank(yearID))
   if (normalize) {
     stats <- stats %>%
       mutate_at(counting_stats, funs(. / PA))
   }
   return(stats)
 }
-calculateSeasonAge <- function(birth_month, season_year, birth_year){
-  ifelse(birth_month <= 6, season_year - birth_year, season_year - birth_year - 1)
+calculateSeasonAge <- function(birth_day, birth_month, birth_year, season_year){
+  season_date <- as.Date(sprintf("%d-06-01", season_year))
+  birth_date <- as.Date(paste(birth_year, birth_month, birth_day, sep = "-"))
+  age <- time_length(season_date - birth_date, unit = "years")
+  return(age)
 }
-
-engineerFeatures(eligible_seasons, counting_stats = counting_stats)
+arrangeData <- function(stats, counting_stats){
+  stats %>%
+    select(playerID, yearID, season_number, age, PA, counting_stats) %>%
+    arrange(playerID, yearID)
+}
+prepareDataFrame <- function(seasons, counting_stats){
+  stats <- engineerStats(seasons, counting_stats)
+  arrangeData(stats, counting_stats)
+}
+prepareDataFrame(eligible_seasons, counting_stats)
