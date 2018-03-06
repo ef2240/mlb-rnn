@@ -13,7 +13,7 @@ battingDataPreparer <- R6Class(
     
     initialize = function(season_info_variables, player_info_variables, season_stats, 
                           earliest_debut = "1871-01-01"){
-      self$variables <- list(season_info = season_info_fields,
+      self$variables <- list(season_info = season_info_variables,
                              player_info = player_info_variables,
                              season_stats = season_stats)
       self$earliest_debut <- earliest_debut
@@ -26,17 +26,18 @@ battingDataPreparer <- R6Class(
       # Filter to eligible seasons
       eligible_players <- private$getEligiblePlayers()
       batting_stats <- Batting %>%
-        collapseStints() %>% 
+        private$collapseStints() %>% 
         select(-stint)
       eligible_batting_seasons <- batting_stats %>%
         filter(playerID %in% eligible_players &
                  AB + BB + HBP + SH + SF > 0)
       
       # Prepare data
-      stats <- private$engineerStats(eligible_batting_seasons, counting_stats)
+      stats <- private$engineerStats(eligible_batting_seasons, self$variables$season_stats)
       positions <- private$getPrimaryPosition()
       stats <- inner_join(stats, positions, by = c("playerID", "yearID"))
-      data <- private$arrangeData(stats, season_info_fields, player_info_fields, counting_stats)
+      data <- private$arrangeData(stats, self$variables$season_info, 
+                                  self$variables$player_info, self$variables$season_stats)
       return(data)
     },
     
@@ -66,7 +67,7 @@ battingDataPreparer <- R6Class(
                X1B = H - X2B - X3B - HR,
                UIBB = BB - IBB) %>%
         inner_join(Master, by = "playerID") %>%
-        mutate(age = calculateSeasonAge(birthDay, birthMonth, birthYear, yearID)) %>%
+        mutate(age = private$calculateSeasonAge(birthDay, birthMonth, birthYear, yearID)) %>%
         group_by(playerID) %>%
         mutate(season_number = min_rank(yearID))
       if (normalize) {
@@ -85,7 +86,7 @@ battingDataPreparer <- R6Class(
     
     getPrimaryPosition = function(){
       Appearances %>%
-        collapseStints() %>%
+        private$collapseStints() %>%
         select(-G_all, -GS, -G_batting, -G_defense, -G_ph, -G_pr, -G_of) %>%
         gather(position, games, -playerID, -yearID) %>%
         group_by(playerID, yearID) %>%
