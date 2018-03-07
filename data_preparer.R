@@ -42,6 +42,8 @@ battingDataPreparer <- R6Class(
       stats <- inner_join(stats, positions, by = c("playerID", "yearID"))
       data <- private$arrangeData(stats, self$variables$season_info, 
                                   self$variables$player_info, self$variables$season_stats)
+      self$logger$info("%d seasons and %d batters in dataset", nrow(data), 
+                       n_distinct(data$playerID))
       return(data)
     },
     
