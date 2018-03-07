@@ -4,15 +4,18 @@ library(lubridate)
 library(tidyr)
 library(Lahman)
 library(R6)
+library(logging)
 
 battingDataPreparer <- R6Class(
   public = list(
     data = NULL,
     variables = NULL,
     earliest_debut = NA,
+    logger = NA,
     
     initialize = function(season_info_variables, player_info_variables, season_stats, 
                           earliest_debut = "1871-01-01"){
+      self$logger <- private$getLogger()
       self$variables <- list(season_info = season_info_variables,
                              player_info = player_info_variables,
                              season_stats = season_stats)
@@ -28,6 +31,7 @@ battingDataPreparer <- R6Class(
       batting_stats <- Batting %>%
         private$collapseStints() %>% 
         select(-stint)
+      self$logger$info("Filter out players with no plate appearances")
       eligible_batting_seasons <- batting_stats %>%
         filter(playerID %in% eligible_players &
                  AB + BB + HBP + SH + SF > 0)
@@ -43,6 +47,7 @@ battingDataPreparer <- R6Class(
     
     # Define players in sample (position players debuting since 1988)
     getEligiblePlayers = function(){
+      self$logger$info("Get batters debuting from before %s", self$earliest_debut)
       Appearances %>%
         inner_join(Master, by = "playerID") %>%
         group_by(playerID) %>%
@@ -62,6 +67,7 @@ battingDataPreparer <- R6Class(
     
     # Engineer statistics and prepare data frame
     engineerStats = function(seasons, counting_stats, normalize = TRUE){
+      self$logger$info("Engineer stats, age, and season number")
       stats <- seasons %>%
         mutate(PA = AB + BB + HBP + SH + SF,
                X1B = H - X2B - X3B - HR,
@@ -71,6 +77,7 @@ battingDataPreparer <- R6Class(
         group_by(playerID) %>%
         mutate(season_number = min_rank(yearID))
       if (normalize) {
+        self$logger$info("Normalize counting stats")
         stats <- stats %>%
           mutate_at(counting_stats, funs(. / PA))
       }
@@ -85,6 +92,7 @@ battingDataPreparer <- R6Class(
     },
     
     getPrimaryPosition = function(){
+      self$logger$info("Get primary position by season")
       Appearances %>%
         private$collapseStints() %>%
         select(-G_all, -GS, -G_batting, -G_defense, -G_ph, -G_pr, -G_of) %>%
@@ -101,6 +109,12 @@ battingDataPreparer <- R6Class(
       stats %>%
         select(playerID, yearID, season_info_fields, player_info_fields, counting_stats) %>%
         arrange(playerID, yearID)
+    },
+    
+    getLogger = function() {
+      log <- getLogger('battingDataPreparer')
+      log$addHandler(writeToConsole)
+      return(log)
     }
   )
 )
