@@ -11,11 +11,10 @@ battingDataPreparer <- R6Class(
     data = NULL,
     variables = NULL,
     earliest_debut = NA,
-    logger = NA,
+    logger = getLogger('battingDataPreparer'),
     
     initialize = function(season_info_variables, player_info_variables, season_stats, 
                           earliest_debut = "1871-01-01"){
-      self$logger <- private$getLogger()
       self$variables <- list(season_info = season_info_variables,
                              player_info = player_info_variables,
                              season_stats = season_stats)
@@ -111,12 +110,6 @@ battingDataPreparer <- R6Class(
       stats %>%
         select(playerID, yearID, season_info_fields, player_info_fields, counting_stats) %>%
         arrange(playerID, yearID)
-    },
-    
-    getLogger = function() {
-      log <- getLogger('battingDataPreparer')
-      log$addHandler(writeToConsole)
-      return(log)
     }
   )
 )
