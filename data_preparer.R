@@ -14,11 +14,12 @@ battingDataPreparer <- R6Class(
     logger = getLogger('battingDataPreparer'),
     
     initialize = function(season_info_variables, player_info_variables, season_stats, 
-                          earliest_debut = "1871-01-01"){
+                          earliest_debut = 1871){
+      basicConfig("INFO")
       self$variables <- list(season_info = season_info_variables,
                              player_info = player_info_variables,
                              season_stats = season_stats)
-      self$earliest_debut <- earliest_debut
+      self$earliest_debut <- sprintf("%d-01-01", earliest_debut)
       self$data <- private$prepareData()
     }
   ),
@@ -48,7 +49,7 @@ battingDataPreparer <- R6Class(
     
     # Define players in sample (position players debuting since 1988)
     getEligiblePlayers = function(){
-      self$logger$info("Get batters debuting from before %s", self$earliest_debut)
+      self$logger$info("Get batters debuting after %s", self$earliest_debut)
       Appearances %>%
         inner_join(Master, by = "playerID") %>%
         group_by(playerID) %>%
@@ -118,4 +119,4 @@ battingDataPreparer <- R6Class(
 batting_data <- battingDataPreparer$new(season_info_variables = c("position", "age", "season_number", "PA"),
                                         player_info_variables = c("weight", "height", "bats"),
                                         season_stats = c("X1B", "X2B", "X3B", "HR", "UIBB", "IBB", "HBP", "SB", "CS"),
-                                        earliest_debut = "1988-01-01")
+                                        earliest_debut = 1988)
