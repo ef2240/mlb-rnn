@@ -77,7 +77,8 @@ battingDataPreparer <- R6Class(
         inner_join(Master, by = "playerID") %>%
         mutate(age = private$calculateSeasonAge(birthDay, birthMonth, birthYear, yearID)) %>%
         group_by(playerID) %>%
-        mutate(season_number = min_rank(yearID))
+        mutate(season_number = min_rank(yearID)) %>%
+        ungroup()
       if (normalize) {
         self$logger$info("Normalize counting stats")
         stats <- stats %>%
@@ -104,7 +105,7 @@ battingDataPreparer <- R6Class(
         slice(1) %>%
         ungroup() %>%
         select(-games) %>%
-        mutate(position = gsub("G_", "", position))
+        mutate(position = factor(gsub("G_", "", position)))
     },
     
     arrangeData = function(stats, season_info_fields, player_info_fields, counting_stats){
@@ -114,9 +115,3 @@ battingDataPreparer <- R6Class(
     }
   )
 )
-
-# Run
-batting_data <- battingDataPreparer$new(season_info_variables = c("position", "age", "season_number", "PA"),
-                                        player_info_variables = c("weight", "height", "bats"),
-                                        season_stats = c("X1B", "X2B", "X3B", "HR", "UIBB", "IBB", "HBP", "SB", "CS"),
-                                        earliest_debut = 1988)
